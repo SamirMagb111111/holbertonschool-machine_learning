@@ -12,26 +12,17 @@ def convolve_grayscale_same(images, kernel):
         kernel (numpy.ndarray): Kernel of shape (kh, kw).
 
     Returns:
-        numpy.ndarray: Convolved images with the same height and width.
+        numpy.ndarray: Convolved images.
     """
     m, h, w = images.shape
     kh, kw = kernel.shape
 
-    pad_h = kh - 1
-    pad_w = kw - 1
-
-    pad_top = pad_h // 2
-    pad_bottom = pad_h - pad_top
-    pad_left = pad_w // 2
-    pad_right = pad_w - pad_left
+    ph = kh // 2
+    pw = kw // 2
 
     padded = np.pad(
         images,
-        (
-            (0, 0),
-            (pad_top, pad_bottom),
-            (pad_left, pad_right)
-        ),
+        ((0, 0), (ph, ph), (pw, pw)),
         mode='constant'
     )
 
