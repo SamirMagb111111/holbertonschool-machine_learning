@@ -87,3 +87,29 @@ class Yolo:
             box_class_probs.append(box_class_prob)
 
         return boxes, box_confidences, box_class_probs
+
+    def filter_boxes(self, boxes, box_confidences, box_class_probs):
+        """Filter boxes based on their class scores."""
+        filtered_boxes = []
+        box_classes = []
+        box_scores = []
+
+        for box, confidence, class_probs in zip(
+                boxes, box_confidences, box_class_probs):
+
+            scores = confidence * class_probs
+
+            classes = np.argmax(scores, axis=-1)
+            scores_max = np.max(scores, axis=-1)
+
+            mask = scores_max >= self.class_t
+
+            filtered_boxes.append(box[mask])
+            box_classes.append(classes[mask])
+            box_scores.append(scores_max[mask])
+
+        filtered_boxes = np.concatenate(filtered_boxes, axis=0)
+        box_classes = np.concatenate(box_classes, axis=0)
+        box_scores = np.concatenate(box_scores, axis=0)
+
+        return filtered_boxes, box_classes, box_scores
