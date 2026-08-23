@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Yolo object detection module."""
+"""YOLOv3 object detection module."""
 
 import numpy as np
 import tensorflow.keras as K
@@ -20,7 +20,7 @@ class Yolo:
         self.anchors = anchors
 
     def process_outputs(self, outputs, image_size):
-        """Process Darknet model outputs into bounding boxes."""
+        """Process the outputs from the Darknet model."""
         boxes = []
         box_confidences = []
         box_class_probs = []
@@ -28,8 +28,8 @@ class Yolo:
         image_height = image_size[0]
         image_width = image_size[1]
 
-        input_height = self.model.input.shape[1]
-        input_width = self.model.input.shape[2]
+        input_width = self.model.input.shape[1]
+        input_height = self.model.input.shape[2]
 
         for i, output in enumerate(outputs):
             grid_height = output.shape[0]
@@ -46,22 +46,39 @@ class Yolo:
             tw = output[..., 2]
             th = output[..., 3]
 
-            bx = (1 / (1 + np.exp(-tx)) + grid_x) / grid_width
-            by = (1 / (1 + np.exp(-ty)) + grid_y) / grid_height
+            bx = (
+                (1 / (1 + np.exp(-tx)) + grid_x)
+                / grid_width
+            )
+            by = (
+                (1 / (1 + np.exp(-ty)) + grid_y)
+                / grid_height
+            )
 
             anchor_width = self.anchors[i, :, 0]
             anchor_height = self.anchors[i, :, 1]
 
-            bw = anchor_width * np.exp(tw) / input_width
-            bh = anchor_height * np.exp(th) / input_height
+            bw = (
+                anchor_width * np.exp(tw)
+                / input_width
+            )
+            bh = (
+                anchor_height * np.exp(th)
+                / input_height
+            )
 
-            box[..., 0] = (bx - bw / 2) * image_width
-            box[..., 1] = (by - bh / 2) * image_height
-            box[..., 2] = (bx + bw / 2) * image_width
-            box[..., 3] = (by + bh / 2) * image_height
+            box[..., 0] = (bx - (bw / 2)) * image_width
+            box[..., 1] = (by - (bh / 2)) * image_height
+            box[..., 2] = (bx + (bw / 2)) * image_width
+            box[..., 3] = (by + (bh / 2)) * image_height
 
-            confidence = 1 / (1 + np.exp(-output[..., 4:5]))
-            class_probs = 1 / (1 + np.exp(-output[..., 5:]))
+            confidence = 1 / (
+                1 + np.exp(-output[..., 4:5])
+            )
+
+            class_probs = 1 / (
+                1 + np.exp(-output[..., 5:])
+            )
 
             boxes.append(box)
             box_confidences.append(confidence)
