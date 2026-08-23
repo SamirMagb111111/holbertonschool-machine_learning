@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """YOLOv3 object detection module."""
 
-import cv2
 import glob
 import os
+
+import cv2
 import numpy as np
 import tensorflow.keras as K
 
@@ -23,7 +24,7 @@ class Yolo:
         self.anchors = anchors
 
     def process_outputs(self, outputs, image_size):
-        """Process the outputs of the Darknet model."""
+        """Process outputs from the Darknet model."""
         boxes = []
         box_confidences = []
         box_class_probs = []
@@ -40,7 +41,10 @@ class Yolo:
 
             box = output[..., :4].copy()
 
-            grid_y, grid_x = np.indices((grid_height, grid_width))
+            grid_y, grid_x = np.indices(
+                (grid_height, grid_width)
+            )
+
             grid_x = np.expand_dims(grid_x, axis=-1)
             grid_y = np.expand_dims(grid_y, axis=-1)
 
@@ -77,21 +81,22 @@ class Yolo:
             box[..., 2] = (bx + bw / 2) * image_width
             box[..., 3] = (by + bh / 2) * image_height
 
-            box_confidence = (
+            confidence = (
                 1 / (1 + np.exp(-output[..., 4:5]))
             )
 
-            box_class_prob = (
+            class_probs = (
                 1 / (1 + np.exp(-output[..., 5:]))
             )
 
             boxes.append(box)
-            box_confidences.append(box_confidence)
-            box_class_probs.append(box_class_prob)
+            box_confidences.append(confidence)
+            box_class_probs.append(class_probs)
 
         return boxes, box_confidences, box_class_probs
 
-    def filter_boxes(self, boxes, box_confidences, box_class_probs):
+    def filter_boxes(
+            self, boxes, box_confidences, box_class_probs):
         """Filter boxes based on their class scores."""
         filtered_boxes = []
         box_classes = []
@@ -111,15 +116,23 @@ class Yolo:
             box_classes.append(classes[mask])
             box_scores.append(scores_max[mask])
 
-        filtered_boxes = np.concatenate(filtered_boxes, axis=0)
-        box_classes = np.concatenate(box_classes, axis=0)
-        box_scores = np.concatenate(box_scores, axis=0)
+        filtered_boxes = np.concatenate(
+            filtered_boxes, axis=0
+        )
+
+        box_classes = np.concatenate(
+            box_classes, axis=0
+        )
+
+        box_scores = np.concatenate(
+            box_scores, axis=0
+        )
 
         return filtered_boxes, box_classes, box_scores
 
     def non_max_suppression(
             self, filtered_boxes, box_classes, box_scores):
-        """Apply non-max suppression to filtered bounding boxes."""
+        """Apply non-max suppression."""
         box_predictions = []
         predicted_box_classes = []
         predicted_box_scores = []
@@ -143,6 +156,7 @@ class Yolo:
                 class_boxes = np.delete(
                     class_boxes, max_index, axis=0
                 )
+
                 class_scores = np.delete(
                     class_scores, max_index, axis=0
                 )
@@ -150,13 +164,29 @@ class Yolo:
                 if len(class_boxes) == 0:
                     break
 
-                x1 = np.maximum(best_box[0], class_boxes[:, 0])
-                y1 = np.maximum(best_box[1], class_boxes[:, 1])
-                x2 = np.minimum(best_box[2], class_boxes[:, 2])
-                y2 = np.minimum(best_box[3], class_boxes[:, 3])
+                x1 = np.maximum(
+                    best_box[0], class_boxes[:, 0]
+                )
 
-                intersection_width = np.maximum(0, x2 - x1)
-                intersection_height = np.maximum(0, y2 - y1)
+                y1 = np.maximum(
+                    best_box[1], class_boxes[:, 1]
+                )
+
+                x2 = np.minimum(
+                    best_box[2], class_boxes[:, 2]
+                )
+
+                y2 = np.minimum(
+                    best_box[3], class_boxes[:, 3]
+                )
+
+                intersection_width = np.maximum(
+                    0, x2 - x1
+                )
+
+                intersection_height = np.maximum(
+                    0, y2 - y1
+                )
 
                 intersection = (
                     intersection_width * intersection_height
@@ -172,7 +202,10 @@ class Yolo:
                     * (class_boxes[:, 3] - class_boxes[:, 1])
                 )
 
-                union = best_area + box_areas - intersection
+                union = (
+                    best_area + box_areas - intersection
+                )
+
                 iou = intersection / union
 
                 keep = iou < self.nms_t
@@ -180,9 +213,17 @@ class Yolo:
                 class_boxes = class_boxes[keep]
                 class_scores = class_scores[keep]
 
-        box_predictions = np.array(box_predictions)
-        predicted_box_classes = np.array(predicted_box_classes)
-        predicted_box_scores = np.array(predicted_box_scores)
+        box_predictions = np.array(
+            box_predictions
+        )
+
+        predicted_box_classes = np.array(
+            predicted_box_classes
+        )
+
+        predicted_box_scores = np.array(
+            predicted_box_scores
+        )
 
         return (
             box_predictions,
@@ -192,41 +233,38 @@ class Yolo:
 
     @staticmethod
     def load_images(folder_path):
-        """Load all images from a folder."""
+        """Load images from a folder."""
         images = []
-        image_paths = []
+        image_paths = glob.glob(folder_path + "/*")
 
-        for image_path in glob.glob(folder_path + "/*"):
+        for image_path in image_paths:
             image = cv2.imread(image_path)
-
-            if image is not None:
-                images.append(image)
-                image_paths.append(image_path)
+            images.append(image)
 
         return images, image_paths
 
     def preprocess_images(self, images):
-        """Preprocess images for the YOLO model."""
+        """Preprocess images for the Darknet model."""
         pimages = []
         image_shapes = []
 
-        input_height = self.model.input.shape[1]
-        input_width = self.model.input.shape[2]
+        input_h = self.model.input.shape[2]
+        input_w = self.model.input.shape[1]
 
         for image in images:
             image_shapes.append(
-                [image.shape[0], image.shape[1]]
+                (image.shape[0], image.shape[1])
             )
 
-            resized_image = cv2.resize(
+            processed_image = cv2.resize(
                 image,
-                (input_width, input_height),
+                (input_w, input_h),
                 interpolation=cv2.INTER_CUBIC
             )
 
-            resized_image = resized_image / 255.0
+            processed_image = processed_image / 255
 
-            pimages.append(resized_image)
+            pimages.append(processed_image)
 
         pimages = np.array(pimages)
         image_shapes = np.array(image_shapes)
@@ -235,8 +273,8 @@ class Yolo:
 
     def show_boxes(
             self, image, boxes, box_classes, box_scores, file_name):
-        """Display an image with detected bounding boxes."""
-        for box, class_index, score in zip(
+        """Display image with bounding boxes and detection scores."""
+        for box, box_class, box_score in zip(
                 boxes, box_classes, box_scores):
 
             x1 = int(box[0])
@@ -252,8 +290,10 @@ class Yolo:
                 2
             )
 
-            class_name = self.class_names[class_index]
-            text = "{} {:.2f}".format(class_name, score)
+            class_name = self.class_names[box_class]
+            text = "{} {:.2f}".format(
+                class_name, box_score
+            )
 
             cv2.putText(
                 image,
@@ -271,14 +311,19 @@ class Yolo:
         key = cv2.waitKey(0)
 
         if key == ord("s"):
-            if not os.path.exists("detections"):
-                os.makedirs("detections")
+            os.makedirs(
+                "detections",
+                exist_ok=True
+            )
 
             save_path = os.path.join(
                 "detections",
                 os.path.basename(file_name)
             )
 
-            cv2.imwrite(save_path, image)
+            cv2.imwrite(
+                save_path,
+                image
+            )
 
         cv2.destroyAllWindows()
