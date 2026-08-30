@@ -29,7 +29,7 @@ class BayesianOptimization:
     def acquisition(self):
         """Calculate the next best sample using Expected Improvement."""
         mu, sigma = self.gp.predict(self.X_s)
-        sigma = np.sqrt(sigma)
+        sigma = sigma.reshape(-1)
 
         if self.minimize:
             optimum = np.min(self.gp.Y)
@@ -38,14 +38,15 @@ class BayesianOptimization:
             optimum = np.max(self.gp.Y)
             improvement = mu - optimum - self.xsi
 
-        with np.errstate(divide='ignore'):
-            Z = improvement / sigma
-            EI = (
-                improvement * norm.cdf(Z) +
-                sigma * norm.pdf(Z)
-            )
+        Z = np.zeros_like(improvement)
+        mask = sigma > 0
+        Z[mask] = improvement[mask] / sigma[mask]
 
-        EI[sigma == 0] = 0
+        EI = np.zeros_like(improvement)
+        EI[mask] = (
+            improvement[mask] * norm.cdf(Z[mask]) +
+            sigma[mask] * norm.pdf(Z[mask])
+        )
 
         X_next = self.X_s[np.argmax(EI)]
 
@@ -59,8 +60,8 @@ class BayesianOptimization:
             if np.any(np.isclose(self.gp.X, X_next)):
                 break
 
-            Y_next = self.f(X_next)
-            self.gp.update(X_next, Y_next)
+            Y_next = self.f(X_next).reshape(-1, 1)
+            self.gp.update(X_next.reshape(-1, 1), Y_next)
 
         if self.minimize:
             index = np.argmin(self.gp.Y)
