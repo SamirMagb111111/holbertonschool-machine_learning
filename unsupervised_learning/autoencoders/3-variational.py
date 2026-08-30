@@ -28,15 +28,11 @@ def autoencoder(input_dims, hidden_layers, latent_dims):
     def sampling(args):
         """Sample a point from the latent distribution."""
         mu, log_var = args
-
         epsilon = keras.backend.random_normal(
             shape=keras.backend.shape(mu)
         )
 
-        return (
-            mu +
-            keras.backend.exp(log_var / 2) * epsilon
-        )
+        return mu + keras.backend.exp(log_var / 2) * epsilon
 
     latent = keras.layers.Lambda(
         sampling
@@ -66,7 +62,7 @@ def autoencoder(input_dims, hidden_layers, latent_dims):
         outputs=decoder_output
     )
 
-    auto_output = decoder(latent)
+    auto_output = decoder(encoder(encoder_input)[0])
 
     auto = keras.Model(
         inputs=encoder_input,
@@ -74,7 +70,7 @@ def autoencoder(input_dims, hidden_layers, latent_dims):
     )
 
     def vae_loss(y_true, y_pred):
-        """Calculate reconstruction and KL divergence loss."""
+        """Calculate VAE reconstruction and KL loss."""
         reconstruction_loss = keras.losses.binary_crossentropy(
             y_true,
             y_pred
