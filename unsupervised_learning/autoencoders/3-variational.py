@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Variational autoencoder module."""
+"""Sparse autoencoder module."""
 
 import tensorflow.keras as keras
 
 
-def autoencoder(input_dims, hidden_layers, latent_dims):
-    """Create a variational autoencoder."""
+def autoencoder(input_dims, hidden_layers, latent_dims, lambtha):
+    """Create a sparse autoencoder."""
     encoder_input = keras.Input(shape=(input_dims,))
     x = encoder_input
 
@@ -15,32 +15,15 @@ def autoencoder(input_dims, hidden_layers, latent_dims):
             activation='relu'
         )(x)
 
-    mean = keras.layers.Dense(
+    latent = keras.layers.Dense(
         latent_dims,
-        activation=None
+        activation='relu',
+        activity_regularizer=keras.regularizers.l1(lambtha)
     )(x)
-
-    log_variance = keras.layers.Dense(
-        latent_dims,
-        activation=None
-    )(x)
-
-    def sampling(args):
-        """Sample a point from the latent distribution."""
-        mu, log_var = args
-        epsilon = keras.backend.random_normal(
-            shape=keras.backend.shape(mu)
-        )
-
-        return mu + keras.backend.exp(log_var / 2) * epsilon
-
-    latent = keras.layers.Lambda(
-        sampling
-    )([mean, log_variance])
 
     encoder = keras.Model(
         inputs=encoder_input,
-        outputs=[latent, mean, log_variance]
+        outputs=latent
     )
 
     decoder_input = keras.Input(shape=(latent_dims,))
@@ -62,36 +45,16 @@ def autoencoder(input_dims, hidden_layers, latent_dims):
         outputs=decoder_output
     )
 
-    auto_output = decoder(encoder(encoder_input)[0])
+    auto_output = decoder(encoder(encoder_input))
 
     auto = keras.Model(
         inputs=encoder_input,
         outputs=auto_output
     )
 
-    def vae_loss(y_true, y_pred):
-        """Calculate VAE reconstruction and KL loss."""
-        reconstruction_loss = keras.losses.binary_crossentropy(
-            y_true,
-            y_pred
-        )
-        reconstruction_loss *= input_dims
-
-        kl_loss = -0.5 * keras.backend.sum(
-            1 +
-            log_variance -
-            keras.backend.square(mean) -
-            keras.backend.exp(log_variance),
-            axis=-1
-        )
-
-        return keras.backend.mean(
-            reconstruction_loss + kl_loss
-        )
-
     auto.compile(
-        optimizer='adam',
-        loss=vae_loss
+        optimizer=keras.optimizers.Adam(),
+        loss='binary_crossentropy'
     )
 
     return encoder, decoder, auto
