@@ -29,7 +29,6 @@ class BayesianOptimization:
     def acquisition(self):
         """Calculate the next best sample using Expected Improvement."""
         mu, sigma = self.gp.predict(self.X_s)
-        sigma = np.sqrt(sigma)
 
         if self.minimize:
             optimum = np.min(self.gp.Y)
