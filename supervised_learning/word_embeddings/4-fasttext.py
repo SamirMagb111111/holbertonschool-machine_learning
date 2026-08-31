@@ -22,11 +22,17 @@ def fasttext_model(sentences, vector_size=100, min_count=5,
     Returns:
         The trained gensim FastText model.
     """
-    sg = 0 if cbow else 1
-    model = gensim.models.FastText(
-        sentences=sentences, vector_size=vector_size, min_count=min_count,
-        window=window, negative=negative, sg=sg, seed=seed, workers=workers,
-        epochs=epochs)
-    model.train(sentences, total_examples=model.corpus_count,
-                epochs=model.epochs)
+    model = gensim.models.fasttext.FastText(
+        sentences=sentences,
+        vector_size=vector_size,
+        min_count=min_count,
+        window=window,
+        negative=negative,
+        sg=int(not cbow),
+        epochs=epochs,
+        seed=seed,
+        workers=workers)
+    model.build_vocab(corpus_iterable=sentences)
+    model.train(corpus_iterable=sentences, total_examples=len(sentences),
+                epochs=epochs)
     return model
